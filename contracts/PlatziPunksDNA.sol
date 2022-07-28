@@ -201,7 +201,13 @@ contract PlatziPunksDNA {
         "ShortHairTheCaesarSidePart"
     ];
 
-    // TODO: Calculate DNA
+    // this function pseudo random is deterministc and should not be used in production
+    function deterministicPseudoRandomDNA(uint256 _tokenId, address _minter) public pure returns(uint256){
+        uint256 combinedParms = _tokenId + uint160(_minter);
+        bytes memory encodedParams = abi.encodePacked(combinedParms);
+        bytes32 hashedParams = keccak256(encodedParams);
+        return uint256(hashedParams);
+    }
 
     // Get attributes
     uint8 constant ADN_SECTION_SIZE = 2;
