@@ -9,7 +9,7 @@ const privateKey= process.env.DEPLOYER_SIGNER_PRIVATE_KEY;
 module.exports = {
   solidity: "0.8.9",
 /*se pueden trabajar con varias redes a la vez */
-  defaultNetwork: "rinkeby",
+  //defaultNetwork: "rinkeby",
   networks:{
     hardhat: {
     },

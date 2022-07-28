@@ -24,7 +24,7 @@ contract PlatziPunks is ERC721, ERC721Enumerable, PlatziPunksDNA {
     function mint() public payable {
         uint256 current = _idCounter.current();
         require(current < maxSupply, "All PlatziPunks were minted");
-        require(msg.value > 1000000000000000, "Must be over 0.001 ETH");
+        //require(msg.value > 1000000000000000, "Must be over 0.001 ETH");
 
         //generar un DNA con lafuncion  deterministicPseudoRandomDNA
         tokenDNA[current] = deterministicPseudoRandomDNA(current, msg.sender);
@@ -34,7 +34,7 @@ contract PlatziPunks is ERC721, ERC721Enumerable, PlatziPunksDNA {
         // incrementar el id del token
         _idCounter.increment(); // _tokenId.increment()
         //enviar eth a la tesoreria
-        treasury.transfer(msg.value);
+        //treasury.transfer(msg.value);
 
     }
 
