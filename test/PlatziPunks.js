@@ -40,5 +40,39 @@ describe('Platzi Punks Contract', () => {
 
             //TODO pendiente agregar validacion de enviar ETH
         })
+
+        it('has a minting limit', async () => {
+            const maxSupply = 2;
+
+            const { deployed } = await setup({ maxSupply });
+
+            // Mint all
+            await deployed.mint();
+            await deployed.mint();
+
+            //Assert del ultimo mint
+            await expect(deployed.mint()).to.be.revertedWith("All PlatziPunks were minted")
+        })
+    })
+    describe('tokenURI', () => {
+        it("return valid metadata", async () => {
+            const { deployed } = await setup({})
+
+            await deployed.mint()
+
+            const tokenURI = await deployed.tokenURI(0)
+            const stringifiedTokenURI = await tokenURI.toString()
+            const [, base64JSON] = stringifiedTokenURI.split(
+                "data:application/json;base64,"
+            )
+
+            const stringifiedMetadata = await Buffer.from(base64JSON,"base64").toString("ascii")
+            
+            //console.log(stringifiedMetadata)
+            //pasamos el string a formato JSON 
+            const metadata = JSON.parse(stringifiedMetadata)
+            //revisamos que el objeto JSON tenga las keys name, description, image
+            expect(metadata).to.have.all.keys("name","description","image")
+        })
     })
 })

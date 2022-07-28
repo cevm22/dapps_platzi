@@ -5,10 +5,13 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";    
 import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./PlatziPunksDNA.sol";
 
 contract PlatziPunks is ERC721, ERC721Enumerable, PlatziPunksDNA {
     using Counters for Counters.Counter;
+    // agregamos esta libreria para que los valores uint256 los pueda pasar a strings
+    using Strings for uint256;
 
     Counters.Counter private _idCounter;
     uint256 public maxSupply;
@@ -102,9 +105,10 @@ contract PlatziPunks is ERC721, ERC721Enumerable, PlatziPunksDNA {
         // la manera de concatenar es por medio de bytes, como se muesrta a continuacion
         string memory jsonURI = Base64.encode(
             abi.encodePacked(
-                '{ "name": "PlatziPunks #" ',
-                tokenId,
-                '", "descripcion": "Platzi Punks are randomized avatars stored on chain to teach DAap development on Platzi", "image": ',
+                '{ "name": "PlatziPunks #',
+                // Asegurarnos con la libreria de openzeppelin para poder pasar todos los caracteres a bytes
+                tokenId.toString(),
+                '", "description": "Platzi Punks are randomized avatars stored on chain to teach DAap development on Platzi", "image": "',
                 image,
                 '"}'
             
