@@ -19,9 +19,8 @@ contract PlatziPunks is ERC721, ERC721Enumerable, PlatziPunksDNA {
 
     mapping(uint256 => uint256) tokenDNA;
 
-    constructor(uint256 _maxSupply, address payable _treasury) ERC721("PlatziPunks","PLPKS"){
+    constructor(uint256 _maxSupply) ERC721("PlatziPunks","PLPKS"){
         maxSupply = _maxSupply;
-        treasury = _treasury;
     }
 
     function mint() public payable {

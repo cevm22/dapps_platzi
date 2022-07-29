@@ -7,7 +7,7 @@ const deploy = async () => {
     console.log("Deploying contract with the account: ", deployer.address );
 
     const PlatziPunks = await ethers.getContractFactory("PlatziPunks"); // este debe ser el mismo nombre del smart contract
-    const deployed = await PlatziPunks.deploy();
+    const deployed = await PlatziPunks.deploy(10000);
 
     console.log("Platzi Punks was deployed at: ", deployed.address)
 };
