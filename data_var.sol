@@ -54,6 +54,11 @@ contract data_var{
         _;
     }
 
+    // Validate the Deal status was cancelled
+    modifier cancelledDeal(uint256 _dealID){
+        require(deals[_dealID].status == 3,"This DEAL are not CANCELLED");
+        _;
+    }
     // Validate the Deal status still OPEN
     modifier openDeal(uint256 _dealID){
         require(deals[_dealID].status == 1,"This DEAL are not OPEN");
@@ -92,14 +97,40 @@ contract data_var{
 
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
         // TODO> hacer test a esta funcion
-        require(deals[_dealID].buyer == msg.sender,"Your are not the buyer");
+        // TODO> Aplicar SAFE MATH lib
+        // TODO> Aplicar reverts en caso de no completarse la transaccion
+        require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
         _token = IERC20 (tokens[deals[_dealID].coin]);
         _token.transferFrom(msg.sender, address(this), deals[_dealID].amount);
         deals[_dealID].goods += deals[_dealID].amount;
     }
 
     function payDeal(uint256 _dealID)public openDeal(_dealID){
+        // TODO> Aplicar SAFE MATH lib
+        // TODO> Aplicar reverts en caso de no completarse la transaccion
+        // TODO> Hacer funcion para quitar FEES
+        _token = IERC20 (tokens[deals[_dealID].coin]);
 
+        uint256 _newAmount = deals[_dealID].amount - 100;
+        uint256 _fee = deals[_dealID].amount - _newAmount;
+
+        require(_fee > 0, "Fee is lower than 0");
+        deals[_dealID].goods -= deals[_dealID].amount;
+
+        // send the Fee to owner
+        _token.transfer(owner, _fee);
+        // send to Seller tokens
+        _token.transfer(deals[_dealID].seller, _newAmount);
+        // TODO> transferir FEES al owner
+
+    }
+
+    function refundBuyer()public{
+        // TODO> hacer funcion para refund
+    }
+
+    function feeCalculation()private{
+        // TODO> Hacer funcion para quitar FEES
     }
 
     function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) isPartTaker(_dealID){
