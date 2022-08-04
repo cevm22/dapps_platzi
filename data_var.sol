@@ -10,13 +10,16 @@ contract data_var{
     uint256 public defaultLifeTime;
     uint256 public defaultFee;
     address payable owner;
-    
+    using SafeERC20 for IERC20;
+    IERC20 _token;
+ 
     struct metadataDeal{
         address buyer; //0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
         address seller; //0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
         string title; //TITULO RANDOM CON PALABRAS RANDOM
         string description; 
-        uint256 amount; //01234567890123456789
+        uint256 amount; //Price Deal offer 01234567890123456789
+        uint256 goods; // Tokens holded in current deal
         uint16 status; //0=pending, 1= open, 2= closed, 3= cancelled, 4= tribunal
         uint256 created;
     }
@@ -35,8 +38,13 @@ contract data_var{
     // deal ID to partTake choose
     mapping(uint256 => agreement) private acceptance;
 
-    constructor(){
+    // tokens contract
+    mapping(string => address) public tokens;
+
+    constructor(address _tokenAddress, string memory _tokenName){
         owner = payable(msg.sender);
+        tokens[_tokenName] = _tokenAddress;
+        // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
     }
 
     // Validate Only the buyer or seller can edit
@@ -59,8 +67,8 @@ contract data_var{
 
     function createDeal(
         uint256 _current,
-        address _buyer,
-        address _seller,
+        address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
+        address _seller, // 0xd92A8d5BCa7076204c607293235fE78200f392A7
         string memory _title,
         string memory _description,
         uint256 _amount
@@ -68,15 +76,44 @@ contract data_var{
         
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
-        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, block.timestamp);
+        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp);
         }
         if(_seller == msg.sender){
         acceptance[_current] = agreement(0,0,false,true);
-        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, block.timestamp);
+        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp);
         }
         
         return(true);
     }
+
+    function depositGoods(uint256 _dealID, uint256 _amount, string memory _tokenName)public { // openDeal(_dealID) isPartTaker(_dealID){
+        _token = IERC20 (tokens[_tokenName]);
+        _token.transferFrom(msg.sender, address(this), _amount);
+        deals[_dealID].goods += _amount;
+    }
+
+    function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) {
+        //TODO: hacer test a esta funcion
+        if(msg.sender == deals[_dealID].buyer){
+            acceptance[_dealID].buyerAcceptDraft = _decision;
+        }
+        if(msg.sender == deals[_dealID].seller){
+            acceptance[_dealID].sellerAcceptDraft = _decision;
+        }
+        if(acceptance[_dealID].buyerAcceptDraft == true && acceptance[_dealID].sellerAcceptDraft == true ){
+            deals[_dealID].status = 1;
+        }
+    }
+
+    function takeDecision(uint256 _dealID, uint8 _decision)public isPartTaker(_dealID) openDeal(_dealID){
+        if(msg.sender == deals[_dealID].buyer){
+            acceptance[_dealID].buyerChoose = _decision;
+        }
+        if(msg.sender == deals[_dealID].seller){
+            acceptance[_dealID].sellerChoose = _decision;
+        }
+    }
+
 
     function finishDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) returns(string memory status){
         //both want to proceed and finish
@@ -95,25 +132,7 @@ contract data_var{
         }
     }
 
-    function takeDecision(uint256 _dealID, uint8 _decision)public isPartTaker(_dealID) openDeal(_dealID){
-        if(msg.sender == deals[_dealID].buyer){
-            acceptance[_dealID].buyerChoose = _decision;
-        }
-        if(msg.sender == deals[_dealID].seller){
-            acceptance[_dealID].sellerChoose = _decision;
-        }
-    }
+   
 
-    function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) {
-        //TODO: hacer test a esta funcion
-        if(msg.sender == deals[_dealID].buyer){
-            acceptance[_dealID].buyerAcceptDraft = _decision;
-        }
-        if(msg.sender == deals[_dealID].seller){
-            acceptance[_dealID].sellerAcceptDraft = _decision;
-        }
-        if(acceptance[_dealID].buyerAcceptDraft == true && acceptance[_dealID].sellerAcceptDraft == true ){
-            deals[_dealID].status = 1;
-        }
-    }
+    
 }
