@@ -102,7 +102,7 @@ contract data_var{
 
     }
 
-    function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) {
+    function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) isPartTaker(_dealID){
         //TODO: hacer test a esta funcion
         if(msg.sender == deals[_dealID].buyer){
             acceptance[_dealID].buyerAcceptDraft = _decision;
