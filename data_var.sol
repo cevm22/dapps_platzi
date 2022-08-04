@@ -80,7 +80,7 @@ contract data_var{
         uint256 _amount,
         string memory _coin
         )public returns(bool){
-        // TODO> hacer testa a esta funcion
+        // TODO> hacer test a esta funcion
         require(abi.encodePacked(tokens[_coin]).length > 0,"This token is not supported by the contract");
 
         if(_buyer == msg.sender){
@@ -125,8 +125,11 @@ contract data_var{
 
     }
 
-    function refundBuyer()public{
+    function refundBuyer(uint256 _dealID)public cancelledDeal(_dealID){
         // TODO> hacer funcion para refund
+        deals[_dealID].goods -= deals[_dealID].amount;
+        _token.transfer(deals[_dealID].seller, deals[_dealID].amount);
+
     }
 
     function feeCalculation()private{
