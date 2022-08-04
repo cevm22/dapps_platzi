@@ -22,6 +22,7 @@ contract data_var{
         uint256 goods; // Tokens holded in current deal
         uint16 status; //0=pending, 1= open, 2= closed, 3= cancelled, 4= tribunal
         uint256 created;
+        string coin;
     }
 
     //choose (0 = No answer, 1 = Accepted, 2 = Cancelled)
@@ -71,25 +72,34 @@ contract data_var{
         address _seller, // 0xd92A8d5BCa7076204c607293235fE78200f392A7
         string memory _title,
         string memory _description,
-        uint256 _amount
+        uint256 _amount,
+        string memory _coin
         )public returns(bool){
-        
+        // TODO> hacer testa a esta funcion
+        require(abi.encodePacked(tokens[_coin]).length > 0,"This token is not supported by the contract");
+
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
-        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp);
+        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _coin);
         }
         if(_seller == msg.sender){
         acceptance[_current] = agreement(0,0,false,true);
-        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp);
+        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _coin);
         }
         
         return(true);
     }
 
-    function depositGoods(uint256 _dealID, uint256 _amount, string memory _tokenName)public { // openDeal(_dealID) isPartTaker(_dealID){
-        _token = IERC20 (tokens[_tokenName]);
-        _token.transferFrom(msg.sender, address(this), _amount);
-        deals[_dealID].goods += _amount;
+    function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
+        // TODO> hacer test a esta funcion
+        require(deals[_dealID].buyer == msg.sender,"Your are not the buyer");
+        _token = IERC20 (tokens[deals[_dealID].coin]);
+        _token.transferFrom(msg.sender, address(this), deals[_dealID].amount);
+        deals[_dealID].goods += deals[_dealID].amount;
+    }
+
+    function payDeal(uint256 _dealID)public openDeal(_dealID){
+
     }
 
     function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) {
