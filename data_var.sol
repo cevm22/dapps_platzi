@@ -37,7 +37,7 @@ contract data_var{
     mapping(uint256 => metadataDeal) public deals;
 
     // deal ID to partTake choose
-    mapping(uint256 => agreement) private acceptance;
+    mapping(uint256 => agreement) public acceptance;
 
     // tokens contract
     mapping(string => address) public tokens;
@@ -71,6 +71,11 @@ contract data_var{
         _;
     }
 
+    modifier tokenValid(string memory _tokenName){
+        require(tokens[_tokenName] != address(0),"This token is not supported by the contract");
+        _;
+    }
+
     function createDeal(
         uint256 _current,
         address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
@@ -78,18 +83,17 @@ contract data_var{
         string memory _title,
         string memory _description,
         uint256 _amount,
-        string memory _coin
-        )public returns(bool){
-        // TODO> hacer test a esta funcion
-        require(abi.encodePacked(tokens[_coin]).length > 0,"This token is not supported by the contract");
+        string memory _coin // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
+        )public tokenValid(_coin) returns(bool){
 
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
         deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _coin);
-        }
-        if(_seller == msg.sender){
+        }else if(_seller == msg.sender){
         acceptance[_current] = agreement(0,0,false,true);
         deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _coin);
+        } else{
+            revert("You are not a Buyer or Seller");
         }
         
         return(true);
@@ -137,7 +141,6 @@ contract data_var{
     }
 
     function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) isPartTaker(_dealID){
-        //TODO: hacer test a esta funcion
         if(msg.sender == deals[_dealID].buyer){
             acceptance[_dealID].buyerAcceptDraft = _decision;
         }
@@ -164,12 +167,14 @@ contract data_var{
         if(acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1){
             // TODO: Pendiente para envio de tokens y quitar fees
             deals[_dealID].status = 2; //close
+            //TODO> Pendiente de enviar evento
             return("Deal was succesfully CLOSED");
         }
         //both want to cancel and finish
         if(acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2){
             // TODO: Pendiente para reembolso de tokens y quitar fees
             deals[_dealID].status = 3; //cancel
+            //TODO> Pendiente de enviar evento
             return("Deal was CANCELLED");
         } else {
             revert("Buyer and Seller must be agree with the same decision");
