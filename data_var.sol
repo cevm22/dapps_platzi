@@ -3,8 +3,11 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/Counters.sol"; 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol"; 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; 
+
+
 contract data_var{
 
     uint256 public defaultLifeTime;
@@ -13,6 +16,7 @@ contract data_var{
 
     using SafeERC20 for IERC20;
     using Counters for Counters.Counter;
+    using SafeMath for uint256;
 
     IERC20 _token;
     Counters.Counter private _idCounter;
@@ -115,16 +119,17 @@ contract data_var{
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
         // TODO> hacer test a esta funcion
         // TODO> Aplicar SAFE MATH lib
-        // TODO> Aplicar reverts en caso de no completarse la transaccion
         require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
         _token = IERC20 (tokens[deals[_dealID].coin]);
-        _token.transferFrom(msg.sender, address(this), deals[_dealID].amount);
+
+        (bool _success) =_token.transferFrom(msg.sender, address(this), deals[_dealID].amount);
+        if(!_success) revert("Problem paying FEE");
+        
         deals[_dealID].goods += deals[_dealID].amount;
     }
 
     function payDeal(uint256 _dealID)public openDeal(_dealID){
         // TODO> Aplicar SAFE MATH lib
-        // TODO> Aplicar reverts en caso de no completarse la transaccion
         // TODO> Hacer funcion para quitar FEES
         _token = IERC20 (tokens[deals[_dealID].coin]);
 
@@ -135,17 +140,21 @@ contract data_var{
         deals[_dealID].goods -= deals[_dealID].amount;
 
         // send the Fee to owner
-        _token.transfer(owner, _fee);
+        (bool _success)=_token.transfer(owner, _fee);
+        if(!_success) revert("Problem paying FEE");
         // send to Seller tokens
-        _token.transfer(deals[_dealID].seller, _newAmount);
+        (bool _successSeller) = _token.transfer(deals[_dealID].seller, _newAmount);
+        if(!_successSeller) revert("Problem paying SELLER");
         // TODO> transferir FEES al owner
 
     }
 
     function refundBuyer(uint256 _dealID)public cancelledDeal(_dealID){
         // TODO> hacer funcion para refund
+        // TODO> Aplicar SAFE MATH lib
         deals[_dealID].goods -= deals[_dealID].amount;
-        _token.transfer(deals[_dealID].seller, deals[_dealID].amount);
+       (bool _success)= _token.transfer(deals[_dealID].seller, deals[_dealID].amount);
+        if(!_success) revert("Problem with REFUND TOKENS");
 
     }
 
