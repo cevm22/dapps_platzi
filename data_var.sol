@@ -152,7 +152,8 @@ contract data_var{
         }
     }
 
-    function takeDecision(uint256 _dealID, uint8 _decision)public isPartTaker(_dealID) openDeal(_dealID){
+    function partTakerDecision(uint256 _dealID, uint8 _decision)public isPartTaker(_dealID) openDeal(_dealID){
+        require((_decision > 0 && _decision < 3), "Only choose between of: 1 = Accepted, 2 = Cancelled");
         if(msg.sender == deals[_dealID].buyer){
             acceptance[_dealID].buyerChoose = _decision;
         }
