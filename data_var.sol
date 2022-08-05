@@ -10,9 +10,13 @@ contract data_var{
     uint256 public defaultLifeTime;
     uint256 public defaultFee;
     address payable owner;
+
     using SafeERC20 for IERC20;
+    using Counters for Counters.Counter;
+
     IERC20 _token;
- 
+    Counters.Counter private _idCounter;
+
     struct metadataDeal{
         address buyer; //0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
         address seller; //0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
@@ -82,21 +86,25 @@ contract data_var{
     }
 
     function createDeal(
-        uint256 _current,
         address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
         address _seller, // 0xd92A8d5BCa7076204c607293235fE78200f392A7
         string memory _title,
         string memory _description,
         uint256 _amount,
         string memory _coin // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
+
         )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
+        
+        uint256 _current = _idCounter.current();
 
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
         deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _coin);
+        _idCounter.increment();
         }else if(_seller == msg.sender){
         acceptance[_current] = agreement(0,0,false,true);
         deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _coin);
+        _idCounter.increment();
         } else{
             revert("You are not a Buyer or Seller");
         }
