@@ -76,6 +76,11 @@ contract data_var{
         _;
     }
 
+    modifier aboveOfZero(uint256 _amount){
+        require(_amount > 0, "You only can send above of 0 wei");
+        _;
+    }
+
     function createDeal(
         uint256 _current,
         address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
@@ -84,7 +89,7 @@ contract data_var{
         string memory _description,
         uint256 _amount,
         string memory _coin // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
-        )public tokenValid(_coin) returns(bool){
+        )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
 
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
