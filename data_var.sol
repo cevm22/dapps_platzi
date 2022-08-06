@@ -28,7 +28,7 @@ contract data_var{
         string description; 
         uint256 amount; //Price Deal offer 01234567890123456789
         uint256 goods; // Tokens holded in current deal
-        uint16 status; //0=pending, 1= open, 2= closed, 3= cancelled, 4= tribunal
+        uint16 status; //0=pending, 1= open, 2= completed, 3= cancelled, 4= tribunal
         uint256 created;
         string coin;
     }
@@ -128,16 +128,23 @@ contract data_var{
         deals[_dealID].goods += deals[_dealID].amount;
     }
 
-    function payDeal(uint256 _dealID)public openDeal(_dealID){
-        // TODO> Aplicar SAFE MATH lib
-        // TODO> Hacer funcion para quitar FEES
-        _token = IERC20 (tokens[deals[_dealID].coin]);
+    function payDeal(uint256 _dealID)private openDeal(_dealID) returns(bool){
+        // TODO> Hacer test esta funcion
 
-        uint256 _newAmount = deals[_dealID].amount - 100;
-        uint256 _fee = deals[_dealID].amount - _newAmount;
-
+        uint256 _fee = feeCalculation(deals[_dealID].amount);
         require(_fee > 0, "Fee is lower than 0");
-        deals[_dealID].goods -= deals[_dealID].amount;
+        require(deals[_dealID].goods > 0, "No tokens left");
+        require(deals[_dealID].goods == deals[_dealID].amount, "Goods and deal Amount have diff value");
+
+        //closing the Deal as completed
+        deals[_dealID].status = 2;
+
+        _token = IERC20 (tokens[deals[_dealID].coin]);
+        
+        (bool flagAmountFee, uint256 _newAmount)= SafeMath.trySub(deals[_dealID].amount, _fee);
+        if(!flagAmountFee) revert("flagAmountFee overflow");
+
+        deals[_dealID].goods = 0;
 
         // send the Fee to owner
         (bool _success)=_token.transfer(owner, _fee);
@@ -145,8 +152,8 @@ contract data_var{
         // send to Seller tokens
         (bool _successSeller) = _token.transfer(deals[_dealID].seller, _newAmount);
         if(!_successSeller) revert("Problem paying SELLER");
-        // TODO> transferir FEES al owner
 
+        return(true);
     }
 
     function refundBuyer(uint256 _dealID)public cancelledDeal(_dealID){
@@ -158,8 +165,9 @@ contract data_var{
 
     }
 
-    function feeCalculation()private{
+    function feeCalculation(uint256 _amount)private pure returns (uint256){
         // TODO> Hacer funcion para quitar FEES
+        return(_amount);
     }
 
     function acceptDraft(uint256 _dealID, bool _decision)public openDraft(_dealID) isPartTaker(_dealID){
@@ -189,7 +197,8 @@ contract data_var{
         //both want to proceed and finish
         if(acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1){
             // TODO: Pendiente para envio de tokens y quitar fees
-            deals[_dealID].status = 2; //close
+            (bool _flag) = payDeal(_dealID);
+            if(!_flag) revert("Problem with payDeal");
             //TODO> Pendiente de enviar evento
             return("Deal was succesfully CLOSED");
         }
