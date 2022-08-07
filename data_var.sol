@@ -118,8 +118,6 @@ contract data_var{
     }
 
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
-        // TODO> hacer test a esta funcion
-        // TODO> Aplicar SAFE MATH lib
         // TODO> verificar que el buyer tenga la misma cantidad de tokens que el Deal
         require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
         _token = IERC20 (tokens[deals[_dealID].coin]);
@@ -131,7 +129,7 @@ contract data_var{
     }
 
     function payDeal(uint256 _dealID)internal openDeal(_dealID) returns(bool){
-        // TODO> Hacer test esta funcion
+        // TODO> Pendiente envio de evento
 
         uint256 _fee = feeCalculation(deals[_dealID].amount);
         require(_fee > 0, "Fee is lower than 0");
@@ -161,14 +159,15 @@ contract data_var{
     function refundBuyer(uint256 _dealID)public cancelledDeal(_dealID){
         // TODO> hacer funcion para refund
         // TODO> Aplicar SAFE MATH lib
-        deals[_dealID].goods -= deals[_dealID].amount;
-       (bool _success)= _token.transfer(deals[_dealID].seller, deals[_dealID].amount);
+        // TODO> agregar evento
+        // TODO> agregar estado REFUND
+        deals[_dealID].goods = 0;
+       (bool _success)= _token.transfer(deals[_dealID].buyer, deals[_dealID].amount);
         if(!_success) revert("Problem with REFUND TOKENS");
 
     }
 
     function feeCalculation(uint256 _amount)internal view returns (uint256){
-        // TODO> Hacer funcion para quitar FEES
 
         (bool flagMultiply,uint256 mult) = SafeMath.tryMul(_amount, defaultFee);
         if(!flagMultiply) revert("flagMultiplye overflow");
@@ -211,7 +210,7 @@ contract data_var{
     function finishDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) returns(string memory status){
         //both want to proceed and finish
         if(acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1){
-            // TODO: Pendiente para envio de tokens y quitar fees
+            // TODO: agregar require que solo el seller puede terminar el deal
             (bool _flag) = payDeal(_dealID);
             if(!_flag) revert("Problem with payDeal");
             //TODO> Pendiente de enviar evento
