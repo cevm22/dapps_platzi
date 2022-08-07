@@ -51,6 +51,10 @@ contract data_var{
     mapping(string => address) public tokens;
 
     constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee){
+        // TODO> Agregar funcion para modificar defaultFEE
+        // TODO> Agregar funciones para la proteccion de tiempos del BUYER
+        // TODO> Agregar funcion para modificar defaultLifeTime
+        // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
         defaultFee = _defaultFee;
