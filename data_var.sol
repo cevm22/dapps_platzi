@@ -100,6 +100,8 @@ contract data_var{
 
         )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
         
+        // TODO> Agregar distincion de tokens USDT 8 decimals y BUSD/USDC 18 decimals
+
         uint256 _current = _idCounter.current();
 
         if(_buyer == msg.sender){
