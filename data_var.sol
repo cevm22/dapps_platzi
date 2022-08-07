@@ -50,9 +50,10 @@ contract data_var{
     // tokens contract
     mapping(string => address) public tokens;
 
-    constructor(address _tokenAddress, string memory _tokenName){
+    constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee){
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
+        defaultFee = _defaultFee;
         // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
     }
 
@@ -166,9 +167,16 @@ contract data_var{
 
     }
 
-    function feeCalculation(uint256 _amount)internal pure returns (uint256){
+    function feeCalculation(uint256 _amount)internal view returns (uint256){
         // TODO> Hacer funcion para quitar FEES
-        (bool flagAmountFee, uint256 _diff)= SafeMath.trySub(_amount, 1000000000000000000);
+
+        (bool flagMultiply,uint256 mult) = SafeMath.tryMul(_amount, defaultFee);
+        if(!flagMultiply) revert("flagMultiplye overflow");
+        
+        (bool flagDiv, uint256 _fee) = SafeMath.tryDiv(mult,10000);
+        if(!flagDiv) revert("flagDiv overflow or divided by zero");
+
+        (bool flagAmountFee, uint256 _diff)= SafeMath.trySub(_amount, _fee);
         if(!flagAmountFee) revert("flagAmountFee overflow");
 
         (bool flagFee, uint256 _newAmount)= SafeMath.trySub(_amount, _diff);
@@ -189,6 +197,7 @@ contract data_var{
     }
 
     function partTakerDecision(uint256 _dealID, uint8 _decision)public isPartTaker(_dealID) openDeal(_dealID){
+        require(deals[_dealID].goods == deals[_dealID].amount, "Buyer need send the tokens before to make a decision");
         require((_decision > 0 && _decision < 3), "Only choose between of: 1 = Accepted, 2 = Cancelled");
         if(msg.sender == deals[_dealID].buyer){
             acceptance[_dealID].buyerChoose = _decision;
