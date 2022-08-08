@@ -229,7 +229,9 @@ contract data_var{
     function finishDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) returns(string memory status){
         //both want to proceed and finish
         if(acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1){
-            // TODO: agregar require que solo el seller puede terminar el deal
+            // TODO: hacer test esta funcion que SOLO seller puede hacer claim a tokens
+            require(msg.sender == deals[_dealID].seller, "Only Seller can claim tokens");
+
             (bool _flag) = payDeal(_dealID);
             if(!_flag) revert("Problem with payDeal");
             //TODO> Pendiente de enviar evento
@@ -237,7 +239,6 @@ contract data_var{
         }
         //both want to cancel and finish
         if(acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2){
-            // TODO: Pendiente para reembolso de tokens y quitar fees
             
             (bool _flag) = refundBuyer(_dealID);
             if(!_flag) revert("Problem with refundBuyer");
