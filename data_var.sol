@@ -55,7 +55,6 @@ contract data_var{
     event _dealEvent(uint256 ID, string TOKEN, bool STATUSCREATE);
 
     constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee, uint256 _defaultPenalty){
-        // TODO> Agregar funcion para modificar defaultFEE
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
         // TODO> Agregar funcion para modificar defaultLifeTime
         // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
@@ -98,7 +97,9 @@ contract data_var{
 
     // Change Defaults parms
     function _changeDefaultFee(uint256 _newDefaultFee) public{
+        // use Points Basis 1% = 100
         require(msg.sender == owner, "Only Owner can change it");
+        require(_newDefaultFee >= 0 && 1000 <= _newDefaultFee,"Fee need be in Points Basis 1% = 100 or 10% = 1000");
         defaultFee = _newDefaultFee;
     }
 
