@@ -99,7 +99,8 @@ contract data_var{
     function _changeDefaultFee(uint256 _newDefaultFee) public{
         // use Points Basis 1% = 100
         require(msg.sender == owner, "Only Owner can change it");
-        require(_newDefaultFee >= 0 && 1000 <= _newDefaultFee,"Fee need be in Points Basis 1% = 100 or 10% = 1000");
+        require((_newDefaultFee >= 10),"Fee need be in Points Basis MIN 0.1% = 10" );
+        require((_newDefaultFee <= 1000),"Fee need be in Points Basis MAX 10% = 1000");
         defaultFee = _newDefaultFee;
     }
 
