@@ -12,6 +12,7 @@ contract data_var{
 
     uint256 public defaultLifeTime;
     uint256 public defaultFee;
+    uint256 public defaultPenalty;
     address payable owner;
 
     using SafeERC20 for IERC20;
@@ -50,7 +51,7 @@ contract data_var{
     // tokens contract
     mapping(string => address) public tokens;
 
-    constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee){
+    constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee, uint256 _defaultPenalty){
         // TODO> Agregar funcion para modificar defaultFEE
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
         // TODO> Agregar funcion para modificar defaultLifeTime
@@ -58,6 +59,7 @@ contract data_var{
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
         defaultFee = _defaultFee;
+        defaultPenalty = _defaultPenalty;
         // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
     }
 
@@ -67,11 +69,7 @@ contract data_var{
         _;
     }
 
-    // Validate the Deal status was cancelled
-    modifier cancelledDeal(uint256 _dealID){
-        require(deals[_dealID].status == 3,"This DEAL are not CANCELLED");
-        _;
-    }
+
     // Validate the Deal status still OPEN
     modifier openDeal(uint256 _dealID){
         require(deals[_dealID].status == 1,"This DEAL are not OPEN");
@@ -162,15 +160,30 @@ contract data_var{
         return(true);
     }
 
-    function refundBuyer(uint256 _dealID)public cancelledDeal(_dealID){
-        // TODO> hacer funcion para refund
-        // TODO> Aplicar SAFE MATH lib
+    function refundBuyer(uint256 _dealID)internal openDeal(_dealID) returns(bool){
         // TODO> agregar evento
         // TODO> agregar estado REFUND
-        deals[_dealID].goods = 0;
-       (bool _success)= _token.transfer(deals[_dealID].buyer, deals[_dealID].amount);
-        if(!_success) revert("Problem with REFUND TOKENS");
+        require(msg.sender == deals[_dealID].buyer,"Only Buyer can ask for refund");
+        require(deals[_dealID].goods > 0, "No tokens left");
+        require(deals[_dealID].goods == deals[_dealID].amount, "Goods and deal Amount have diff value");
 
+        deals[_dealID].status = 3; //cancel
+        uint256 _refundAmount = deals[_dealID].goods;
+        deals[_dealID].goods = 0;
+        _token = IERC20 (tokens[deals[_dealID].coin]);
+        
+        (bool flagPenalty, uint256 _newamount)= SafeMath.trySub(_refundAmount, defaultPenalty);
+        if(!flagPenalty) revert("flagPenalty overflow");
+
+        uint256 _penaltyFee = _refundAmount -= _newamount;
+        // send the Fee to owner
+        (bool _success)=_token.transfer(owner, _penaltyFee);
+        if(!_success) revert("Problem paying PENALTY");
+       
+        (bool _successBuyer)= _token.transfer(deals[_dealID].buyer, _newamount);
+        if(!_successBuyer) revert("Problem with REFUND TOKENS");
+
+        return(true);
     }
 
     function feeCalculation(uint256 _amount)internal view returns (uint256){
@@ -225,7 +238,10 @@ contract data_var{
         //both want to cancel and finish
         if(acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2){
             // TODO: Pendiente para reembolso de tokens y quitar fees
-            deals[_dealID].status = 3; //cancel
+            
+            (bool _flag) = refundBuyer(_dealID);
+            if(!_flag) revert("Problem with refundBuyer");
+
             //TODO> Pendiente de enviar evento
             return("Deal was CANCELLED");
         } else {
@@ -233,7 +249,4 @@ contract data_var{
         }
     }
 
-   
-
-    
 }
