@@ -51,6 +51,9 @@ contract data_var{
     // tokens contract
     mapping(string => address) public tokens;
 
+    // EVENTS
+    event _dealEvent(uint256 ID, string TOKEN, bool STATUSCREATE);
+
     constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee, uint256 _defaultPenalty){
         // TODO> Agregar funcion para modificar defaultFEE
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
@@ -118,9 +121,10 @@ contract data_var{
             revert("You are not a Buyer or Seller");
         }
         
+        emit _dealEvent( _current,  _coin,  true);
         return(true);
     }
-
+    
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
         // TODO> verificar que el buyer tenga la misma cantidad de tokens que el Deal
         require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
@@ -226,7 +230,7 @@ contract data_var{
     }
 
 
-    function finishDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) returns(string memory status){
+    function finishDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) {
         //both want to proceed and finish
         if(acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1){
             // TODO: hacer test esta funcion que SOLO seller puede hacer claim a tokens
@@ -234,8 +238,7 @@ contract data_var{
 
             (bool _flag) = payDeal(_dealID);
             if(!_flag) revert("Problem with payDeal");
-            //TODO> Pendiente de enviar evento
-            return("Deal was succesfully CLOSED");
+
         }
         //both want to cancel and finish
         if(acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2){
@@ -243,8 +246,6 @@ contract data_var{
             (bool _flag) = refundBuyer(_dealID);
             if(!_flag) revert("Problem with refundBuyer");
 
-            //TODO> Pendiente de enviar evento
-            return("Deal was CANCELLED");
         } else {
             revert("Buyer and Seller must be agree with the same decision");
         }
