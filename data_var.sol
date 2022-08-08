@@ -63,6 +63,7 @@ contract data_var{
         tokens[_tokenName] = _tokenAddress;
         defaultFee = _defaultFee;
         defaultPenalty = _defaultPenalty;
+        defaultLifeTime = 7;
         // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
     }
 
@@ -93,6 +94,22 @@ contract data_var{
     modifier aboveOfZero(uint256 _amount){
         require(_amount > 0, "You only can send above of 0 wei");
         _;
+    }
+
+    // Change Defaults parms
+    function _changeDefaultFee(uint256 _newDefaultFee) public{
+        require(msg.sender == owner, "Only Owner can change it");
+        defaultFee = _newDefaultFee;
+    }
+
+    function _changeDefaultPenalty(uint256 _newDefaultPenalty) public{
+        require(msg.sender == owner, "Only Owner can change it");
+        defaultPenalty = _newDefaultPenalty;
+    }
+
+    function _changeDefaultLifeTime(uint256 _newDefaultLifeTime) public{
+        require(msg.sender == owner, "Only Owner can change it");
+        defaultLifeTime = _newDefaultLifeTime;
     }
 
     function createDeal(
