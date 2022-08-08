@@ -54,13 +54,13 @@ contract data_var{
     // EVENTS
     event _dealEvent(uint256 ID, string TOKEN, bool STATUSCREATE);
 
-    constructor(address _tokenAddress, string memory _tokenName, uint256 _defaultFee, uint256 _defaultPenalty){
+    constructor(address _tokenAddress, string memory _tokenName,  uint256 _defaultPenalty){
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
         // TODO> Agregar funcion para modificar defaultLifeTime
         // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
-        defaultFee = _defaultFee;
+        defaultFee = 150; 
         defaultPenalty = _defaultPenalty;
         defaultLifeTime = 7;
         // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
