@@ -34,7 +34,7 @@ contract data_var{
         string coin;
     }
 
-    //choose (0 = No answer, 1 = Accepted, 2 = Cancelled)
+    //choose (0 = No answer, 1 = Accepted, 2 = Cancelled, 3 = Paid, 4 = Refund)
     struct agreement{
         uint8 buyerChoose;
         uint8 sellerChoose;
@@ -157,8 +157,9 @@ contract data_var{
 
     function payDeal(uint256 _dealID)internal openDeal(_dealID) returns(bool){
         // TODO> Pendiente envio de evento
-
+        _token = IERC20 (tokens[deals[_dealID].coin]);
         uint256 _fee = feeCalculation(deals[_dealID].amount);
+
         require(_fee > 0, "Fee is lower than 0");
         require(deals[_dealID].goods > 0, "No tokens left");
         require(deals[_dealID].goods == deals[_dealID].amount, "Goods and deal Amount have diff value");
@@ -166,12 +167,14 @@ contract data_var{
         //closing the Deal as completed
         deals[_dealID].status = 2;
 
-        _token = IERC20 (tokens[deals[_dealID].coin]);
+        
         
         (bool flagAmountFee, uint256 _newAmount)= SafeMath.trySub(deals[_dealID].amount, _fee);
         if(!flagAmountFee) revert("flagAmountFee overflow");
 
         deals[_dealID].goods = 0;
+        acceptance[_dealID].buyerChoose = 3;
+        acceptance[_dealID].sellerChoose = 3;
 
         // send the Fee to owner
         (bool _success)=_token.transfer(owner, _fee);
@@ -186,14 +189,17 @@ contract data_var{
     function refundBuyer(uint256 _dealID)internal openDeal(_dealID) returns(bool){
         // TODO> agregar evento
         // TODO> agregar estado REFUND
-        require(msg.sender == deals[_dealID].buyer,"Only Buyer can ask for refund");
+        _token = IERC20 (tokens[deals[_dealID].coin]);
+        
         require(deals[_dealID].goods > 0, "No tokens left");
         require(deals[_dealID].goods == deals[_dealID].amount, "Goods and deal Amount have diff value");
 
         deals[_dealID].status = 3; //cancel
         uint256 _refundAmount = deals[_dealID].goods;
         deals[_dealID].goods = 0;
-        _token = IERC20 (tokens[deals[_dealID].coin]);
+        acceptance[_dealID].buyerChoose = 4;
+        acceptance[_dealID].sellerChoose = 4;
+        
         
         (bool flagPenalty, uint256 _newamount)= SafeMath.trySub(_refundAmount, defaultPenalty);
         if(!flagPenalty) revert("flagPenalty overflow");
@@ -249,25 +255,27 @@ contract data_var{
     }
 
 
-    function finishDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) {
-        //both want to proceed and finish
-        if(acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1){
-            // TODO: hacer test esta funcion que SOLO seller puede hacer claim a tokens
-            require(msg.sender == deals[_dealID].seller, "Only Seller can claim tokens");
-
-            (bool _flag) = payDeal(_dealID);
-            if(!_flag) revert("Problem with payDeal");
-
-        }
+    function cancelDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) {
         //both want to cancel and finish
-        if(acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2){
+        require(msg.sender == deals[_dealID].buyer,"Only Buyer can ask for refund");
+        require((acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2),"Buyer and Seller must be agree with the same decision");
             
-            (bool _flag) = refundBuyer(_dealID);
-            if(!_flag) revert("Problem with refundBuyer");
+        (bool _flag) = refundBuyer(_dealID);
+        if(!_flag) revert("Problem with refundBuyer");
 
-        } else {
-            revert("Buyer and Seller must be agree with the same decision");
-        }
     }
+
+    function completeDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) {
+        //both want to proceed and finish
+        require(msg.sender == deals[_dealID].seller, "Only Seller can claim tokens");
+        require((acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1),"Buyer and Seller must be agree with the same decision");
+
+        (bool _flag) = payDeal(_dealID);
+        if(!_flag) revert("Problem with payDeal");
+
+
+    }
+
+
 
 }
