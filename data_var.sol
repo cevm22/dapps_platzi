@@ -119,7 +119,6 @@ contract data_var{
     }
 
     function _addNewToken(string memory _tokenName, address _tokenAddress)public {
-        // TODO> Pendiente de hacer Test
         require(msg.sender == owner, "Only Owner can add a token it");
         require(tokens[_tokenName] == address(0), "This token already exists");
         
