@@ -155,10 +155,10 @@ contract data_var{
     }
     
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
-        // TODO> Pendiente por hacer Test para el require Allowance
+        _token = IERC20 (tokens[deals[_dealID].coin]);
         require(_token.allowance(msg.sender, address(this)) >= deals[_dealID].amount, "First increaseAllowance in the ERC20 contract");
         require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
-        _token = IERC20 (tokens[deals[_dealID].coin]);
+
 
         (bool _success) =_token.transferFrom(msg.sender, address(this), deals[_dealID].amount);
         if(!_success) revert("Problem paying FEE");
