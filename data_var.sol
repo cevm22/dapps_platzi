@@ -63,7 +63,11 @@ contract data_var{
         defaultFee = 150; 
         defaultPenalty = _defaultPenalty;
         defaultLifeTime = 7;
-        // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
+        //================================================================
+        // Rinkeby ETH testnet
+        // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E //decimals 18
+        // USDT 0xD9BA894E0097f8cC2BBc9D24D308b98e36dc6D02 //decimals 18
+        // USDC 0xeb8f08a975Ab53E34D8a0330E0D34de942C95926 //decimals 6
     }
 
     // Validate Only the buyer or seller can edit
@@ -114,6 +118,14 @@ contract data_var{
         defaultLifeTime = _newDefaultLifeTime;
     }
 
+    function _addNewToken(string memory _tokenName, address _tokenAddress)public {
+        // TODO> Pendiente de hacer Test
+        require(msg.sender == owner, "Only Owner can add a token it");
+        require(tokens[_tokenName] == address(0), "This token already exists");
+        
+        tokens[_tokenName] = _tokenAddress;
+    }
+
     function createDeal(
         address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
         address _seller, // 0xd92A8d5BCa7076204c607293235fE78200f392A7
@@ -124,8 +136,6 @@ contract data_var{
 
         )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
         
-        // TODO> Agregar distincion de tokens USDT 8 decimals y BUSD/USDC 18 decimals
-
         uint256 _current = _idCounter.current();
 
         if(_buyer == msg.sender){
