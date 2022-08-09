@@ -145,7 +145,8 @@ contract data_var{
     }
     
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
-        // TODO> verificar que el buyer tenga la misma cantidad de tokens que el Deal
+        // TODO> Pendiente por hacer Test para el require Allowance
+        require(_token.allowance(msg.sender, address(this)) >= deals[_dealID].amount, "First increaseAllowance in the ERC20 contract");
         require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
         _token = IERC20 (tokens[deals[_dealID].coin]);
 
@@ -156,7 +157,7 @@ contract data_var{
     }
 
     function payDeal(uint256 _dealID)internal openDeal(_dealID) returns(bool){
-        // TODO> Pendiente envio de evento
+        // TODO> Agregar anti Reentry Guard
         _token = IERC20 (tokens[deals[_dealID].coin]);
         uint256 _fee = feeCalculation(deals[_dealID].amount);
 
@@ -167,8 +168,6 @@ contract data_var{
         //closing the Deal as completed
         deals[_dealID].status = 2;
 
-        
-        
         (bool flagAmountFee, uint256 _newAmount)= SafeMath.trySub(deals[_dealID].amount, _fee);
         if(!flagAmountFee) revert("flagAmountFee overflow");
 
@@ -187,8 +186,7 @@ contract data_var{
     }
 
     function refundBuyer(uint256 _dealID)internal openDeal(_dealID) returns(bool){
-        // TODO> agregar evento
-        // TODO> agregar estado REFUND
+        // TODO> Agregar anti Reentry Guard
         _token = IERC20 (tokens[deals[_dealID].coin]);
         
         require(deals[_dealID].goods > 0, "No tokens left");
