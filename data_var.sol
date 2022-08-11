@@ -56,7 +56,6 @@ contract data_var{
 
     constructor(address _tokenAddress, string memory _tokenName,  uint256 _defaultPenalty){
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
-        // TODO> Agregar funcion para modificar defaultLifeTime
         // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
