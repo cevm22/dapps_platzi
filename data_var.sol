@@ -31,6 +31,7 @@ contract data_var{
         uint256 goods; // Tokens holded in current deal
         uint16 status; //0=pending, 1= open, 2= completed, 3= cancelled, 4= tribunal
         uint256 created;
+        uint256 deadline; //deadline in timestamp
         string coin;
     }
 
@@ -56,6 +57,7 @@ contract data_var{
 
     constructor(address _tokenAddress, string memory _tokenName,  uint256 _defaultPenalty){
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
+        // TODO> Agregar funcion para modificar defaultLifeTime
         // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
@@ -125,24 +127,29 @@ contract data_var{
     }
 
     function createDeal(
+        // TODO> hacer test a esta funcion y revisar que el _newDeadline funcione
         address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
         address _seller, // 0xd92A8d5BCa7076204c607293235fE78200f392A7
         string memory _title,
         string memory _description,
         uint256 _amount,
-        string memory _coin // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
+        string memory _coin, // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
+        uint256 _deadlineInDays
 
         )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
         
+        require(_deadlineInDays >= 0 && _deadlineInDays <= 30,"Deadline is in days between 0 to 30");
+
+        uint256 _newDeadline = deadlineCal(_deadlineInDays);
         uint256 _current = _idCounter.current();
 
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
-        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _coin);
+        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _newDeadline, _coin);
         _idCounter.increment();
         }else if(_seller == msg.sender){
         acceptance[_current] = agreement(0,0,false,true);
-        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _coin);
+        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _newDeadline, _coin);
         _idCounter.increment();
         } else{
             revert("You are not a Buyer or Seller");
@@ -151,8 +158,25 @@ contract data_var{
         emit _dealEvent( _current,  _coin,  true);
         return(true);
     }
+
+    function deadlineCal(uint256 _deadlineInDays)internal view returns(uint256){
+        // TODO> hacer test a esta funcion y revisar que el _newDeadline funcione en createDeal
+        if(_deadlineInDays > 0){
+            (bool _flagMul,uint256 secs) = SafeMath.tryMul(_deadlineInDays, 86400);
+            if(!_flagMul) revert("_flagMul overflow");
+
+            (bool _flagAdd, uint256 _newDeadline) = SafeMath.tryAdd(secs,block.timestamp);
+            if(!_flagAdd) revert("_flagAdd overflow");
+
+            return(_newDeadline);
+        }else{
+            uint256 _newDeadline = block.timestamp; 
+            return(_newDeadline); 
+        }
+    }
     
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
+        // TODO> Pendiente por hacer Test para el require Allowance
         _token = IERC20 (tokens[deals[_dealID].coin]);
         require(_token.allowance(msg.sender, address(this)) >= deals[_dealID].amount, "First increaseAllowance in the ERC20 contract");
         require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
