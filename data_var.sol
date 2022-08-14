@@ -51,11 +51,14 @@ contract data_var{
 
     // tokens contract
     mapping(string => address) public tokens;
+    
+    // tokens contract > decimals
+    mapping(string => uint) public tokenDecimal;
 
     // EVENTS
     event _dealEvent(uint256 ID, string TOKEN, bool STATUSCREATE);
 
-    constructor(address _tokenAddress, string memory _tokenName,  uint256 _defaultPenalty){
+    constructor(address _tokenAddress, string memory _tokenName,  uint256 _tokenDecimal,uint256 _defaultPenalty){
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
         // TODO> Agregar funcion para modificar defaultLifeTime
         // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
@@ -63,6 +66,7 @@ contract data_var{
 
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
+        tokenDecimal[_tokenName] = _tokenDecimal;
         defaultFee = 150; 
         defaultPenalty = _defaultPenalty;
         defaultLifeTime = 604800;
@@ -223,6 +227,7 @@ contract data_var{
 
     function refundBuyer(uint256 _dealID)internal openDeal(_dealID) returns(bool){
         // TODO> Agregar anti Reentry Guard
+        // TODO> pendiente de testear el calculo del penalty
         _token = IERC20 (tokens[deals[_dealID].coin]);
         
         require(deals[_dealID].goods > 0, "No tokens left");
@@ -234,8 +239,8 @@ contract data_var{
         acceptance[_dealID].buyerChoose = 4;
         acceptance[_dealID].sellerChoose = 4;
         
-        
-        (bool flagPenalty, uint256 _newamount)= SafeMath.trySub(_refundAmount, defaultPenalty);
+        uint256 _newPenalty = (defaultPenalty * 10 ** tokenDecimal[deals[_dealID].coin]);
+        (bool flagPenalty, uint256 _newamount)= SafeMath.trySub(_refundAmount, _newPenalty);
         if(!flagPenalty) revert("flagPenalty overflow");
 
         uint256 _penaltyFee = _refundAmount -= _newamount;
