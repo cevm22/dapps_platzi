@@ -59,11 +59,13 @@ contract data_var{
         // TODO> Agregar funciones para la proteccion de tiempos del BUYER
         // TODO> Agregar funcion para modificar defaultLifeTime
         // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
+        // TODO> solucionar defaultpenalty para ir acorder a los decimales del token
+
         owner = payable(msg.sender);
         tokens[_tokenName] = _tokenAddress;
         defaultFee = 150; 
         defaultPenalty = _defaultPenalty;
-        defaultLifeTime = 7;
+        defaultLifeTime = 604800;
         //================================================================
         // Rinkeby ETH testnet
         // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E //decimals 18
@@ -170,8 +172,10 @@ contract data_var{
 
             return(_newDeadline);
         }else{
-            uint256 _newDeadline = block.timestamp; 
-            return(_newDeadline); 
+            (bool _flagAddDeadline, uint256 _defaultDeadline) = SafeMath.tryAdd(defaultLifeTime, block.timestamp);
+            if(!_flagAddDeadline) revert("_flagAddDeadline overflow");
+
+            return(_defaultDeadline); 
         }
     }
     
