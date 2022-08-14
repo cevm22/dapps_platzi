@@ -43,11 +43,28 @@ contract data_var{
         bool sellerAcceptDraft;
     }
 
+    struct historyUpdates{
+        uint256 lastUpdateId;
+        uint8 buyerChoose;
+        uint8 sellerChoose;
+        mapping(uint256 => proposal) proposalInfo;
+    }
+
+    struct proposal{
+        uint256 created;
+        uint8 proposalType; // 0 = informative, 1 = update deadline
+        uint8 accepted; //(0 = No answer, 1 = Accepted, 2 = Cancelled,)
+        string description;
+    }
+
     // deal ID to metadata Deal 
     mapping(uint256 => metadataDeal) public deals;
 
     // deal ID to partTake choose
     mapping(uint256 => agreement) public acceptance;
+    
+    // deal ID to history updates
+    mapping(uint256 => historyUpdates) public updates;
 
     // tokens contract
     mapping(string => address) public tokens;
@@ -125,11 +142,19 @@ contract data_var{
         defaultLifeTime = _newDefaultLifeTime;
     }
 
-    function _addNewToken(string memory _tokenName, address _tokenAddress)public {
+    function _addNewToken(string memory _tokenName, address _tokenAddress, uint256 _tokenDecimal)public {
         require(msg.sender == owner, "Only Owner can add a token it");
         require(tokens[_tokenName] == address(0), "This token already exists");
         
         tokens[_tokenName] = _tokenAddress;
+        tokenDecimal[_tokenName] = _tokenDecimal;
+    }
+
+    function _updateDeadline(uint256 _dealID, uint256 _addDays)public openDeal(_dealID) isPartTaker(_dealID) returns(bool){
+        // TODO> Agregar validaciones
+        // TODO> Agregar nueva variable para actualizacion de decisiones
+        deals[_dealID].deadline = deadlineCal(_addDays);
+        return(true);
     }
 
     function createDeal(
@@ -176,7 +201,7 @@ contract data_var{
 
             return(_newDeadline);
         }else{
-            (bool _flagAddDeadline, uint256 _defaultDeadline) = SafeMath.tryAdd(defaultLifeTime, block.timestamp);
+            (bool _flagAddDeadline, uint256 _defaultDeadline) = SafeMath.tryAdd(0, block.timestamp);//SafeMath.tryAdd(defaultLifeTime, block.timestamp);
             if(!_flagAddDeadline) revert("_flagAddDeadline overflow");
 
             return(_defaultDeadline); 
@@ -315,6 +340,13 @@ contract data_var{
 
     }
 
+    function buyerAskDeadline(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID){
+        // agregar validacion de cuando se pueda solicitar en el deal
+        require(msg.sender == deals[_dealID].buyer,"Only Buyer can ask for refund");
+        require(deals[_dealID].deadline < block.timestamp, "Seller still have time to complete the deal");
 
+        (bool _flag) = refundBuyer(_dealID);
+        if(!_flag) revert("Problem with refundBuyer");
+    }
 
 }
