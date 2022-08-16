@@ -6,14 +6,16 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol"; 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; 
+import "./proposals.sol";
 
-
-contract data_var{
+contract data_var is proposals {
 
     uint256 public defaultLifeTime;
     uint256 public defaultFee;
     uint256 public defaultPenalty;
     address payable owner;
+    address payable oracle;
+    address payable tribunal;
 
     using SafeERC20 for IERC20;
     using Counters for Counters.Counter;
@@ -23,19 +25,20 @@ contract data_var{
     Counters.Counter private _idCounter;
 
     struct metadataDeal{
-        address buyer; //0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
-        address seller; //0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-        string title; //TITULO RANDOM CON PALABRAS RANDOM
+        address buyer; 
+        address seller; 
+        string title;
         string description; 
-        uint256 amount; //Price Deal offer 01234567890123456789
-        uint256 goods; // Tokens holded in current deal
+        uint256 amount; 
+        uint256 goods; 
         uint16 status; //0=pending, 1= open, 2= completed, 3= cancelled, 4= tribunal
         uint256 created;
-        uint256 deadline; //deadline in timestamp
+        uint256 deadline; // timestamp
         string coin;
+        uint256 numOfProposals;
     }
 
-    //choose (0 = No answer, 1 = Accepted, 2 = Cancelled, 3 = Paid, 4 = Refund)
+    // (0 = No answer, 1 = Accepted, 2 = Cancelled, 3 = Paid, 4 = Refund)
     struct agreement{
         uint8 buyerChoose;
         uint8 sellerChoose;
@@ -43,28 +46,13 @@ contract data_var{
         bool sellerAcceptDraft;
     }
 
-    struct historyUpdates{
-        uint256 lastUpdateId;
-        uint8 buyerChoose;
-        uint8 sellerChoose;
-        mapping(uint256 => proposal) proposalInfo;
-    }
-
-    struct proposal{
-        uint256 created;
-        uint8 proposalType; // 0 = informative, 1 = update deadline
-        uint8 accepted; //(0 = No answer, 1 = Accepted, 2 = Cancelled,)
-        string description;
-    }
 
     // deal ID to metadata Deal 
     mapping(uint256 => metadataDeal) public deals;
 
     // deal ID to partTake choose
     mapping(uint256 => agreement) public acceptance;
-    
-    // deal ID to history updates
-    mapping(uint256 => historyUpdates) public updates;
+
 
     // tokens contract
     mapping(string => address) public tokens;
@@ -150,40 +138,70 @@ contract data_var{
         tokenDecimal[_tokenName] = _tokenDecimal;
     }
 
+
+// TODO> HACER TEST PARA IMPORTAR LAS FUNCIONES PARA LAS PROPUESTAS
+// TODO> HACER FUNCIONES PARA EL ORACULO
+// TODO> HACER FUNCIONES PARA EL TRIBUNAL
     function _updateDeadline(uint256 _dealID, uint256 _addDays)public openDeal(_dealID) isPartTaker(_dealID) returns(bool){
-        // TODO> Agregar validaciones
         // TODO> Agregar nueva variable para actualizacion de decisiones
+        (,uint8 _proposalType, uint8 _accepted, , bool _status) = _seeProposals(_dealID,deals[_dealID].numOfProposals);
+
+        require(deals[_dealID].buyer == msg.sender, "Only BUYER");
+        require(deals[_dealID].numOfProposals > 0,"First make a proposal");
+        require(_proposalType == 1,"NOT deadline type");
+        require(_accepted == 1, "not accepted");
+        require(_status == true, "still pending ");
+
         deals[_dealID].deadline = deadlineCal(_addDays);
         return(true);
     }
 
+
+
+    function _newProposal(uint _dealID, uint8 _proposalType, string memory _description) 
+                        public openDeal(_dealID) isPartTaker(_dealID) returns(bool){
+
+        newProposal( _dealID,  deals[_dealID].buyer,  deals[_dealID].seller, deals[_dealID].numOfProposals,  _proposalType,   _description);
+        deals[_dealID].numOfProposals += 1;
+        return true;
+    }
+
+    function _proposalChoose(uint _dealID, uint8 _choose)public openDeal(_dealID) isPartTaker(_dealID) returns(bool){
+
+       proposalChoose(_dealID, deals[_dealID].numOfProposals, deals[_dealID].buyer, deals[_dealID].seller, _choose);
+       return true;
+    }
+    function __seeProposals(uint _dealId, uint _proposalId)  public view returns(uint256, uint8, uint8, string memory, bool){
+        (uint256 created, uint8 proposalType, uint8 accepted, string memory _description, bool proposalStatus) = _seeProposals(_dealId, _proposalId);
+        return(created, proposalType, accepted, _description, proposalStatus);
+    }
+
     function createDeal(
-        // TODO> hacer test a esta funcion y revisar que el _newDeadline funcione
-        address _buyer, // 0xd20fD73BFD6B0fCC3222E5b881AB03A24449E608
-        address _seller, // 0xd92A8d5BCa7076204c607293235fE78200f392A7
+        address _buyer, 
+        address _seller, 
         string memory _title,
         string memory _description,
         uint256 _amount,
-        string memory _coin, // BUSD 0x4e2442A6f7AeCE64Ca33d31756B5390860BF973E
+        string memory _coin, 
         uint256 _deadlineInDays
 
         )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
         
-        require(_deadlineInDays >= 0 && _deadlineInDays <= 30,"Deadline is in days between 0 to 30");
+        require(_deadlineInDays >= 0 && _deadlineInDays <= 30,"Deadline in days. 0 to 30");
 
         uint256 _newDeadline = deadlineCal(_deadlineInDays);
         uint256 _current = _idCounter.current();
 
         if(_buyer == msg.sender){
         acceptance[_current] = agreement(0,0,true,false);
-        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _newDeadline, _coin);
+        deals[_current] = metadataDeal(msg.sender, _seller, _title, _description, _amount, 0, 0, block.timestamp, _newDeadline, _coin, 0);
         _idCounter.increment();
         }else if(_seller == msg.sender){
         acceptance[_current] = agreement(0,0,false,true);
-        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _newDeadline, _coin);
+        deals[_current] = metadataDeal(_buyer, msg.sender, _title, _description, _amount, 0, 0, block.timestamp, _newDeadline, _coin, 0);
         _idCounter.increment();
         } else{
-            revert("You are not a Buyer or Seller");
+            revert("only B or S");
         }
         
         emit _dealEvent( _current,  _coin,  true);
@@ -194,15 +212,15 @@ contract data_var{
         // TODO> hacer test a esta funcion y revisar que el _newDeadline funcione en createDeal
         if(_deadlineInDays > 0){
             (bool _flagMul,uint256 secs) = SafeMath.tryMul(_deadlineInDays, 86400);
-            if(!_flagMul) revert("_flagMul overflow");
+            if(!_flagMul) revert();
 
             (bool _flagAdd, uint256 _newDeadline) = SafeMath.tryAdd(secs,block.timestamp);
-            if(!_flagAdd) revert("_flagAdd overflow");
+            if(!_flagAdd) revert();
 
             return(_newDeadline);
         }else{
             (bool _flagAddDeadline, uint256 _defaultDeadline) = SafeMath.tryAdd(0, block.timestamp);//SafeMath.tryAdd(defaultLifeTime, block.timestamp);
-            if(!_flagAddDeadline) revert("_flagAddDeadline overflow");
+            if(!_flagAddDeadline) revert();
 
             return(_defaultDeadline); 
         }
@@ -211,12 +229,12 @@ contract data_var{
     function depositGoods(uint256 _dealID)public openDeal(_dealID) isPartTaker(_dealID) { 
         // TODO> Pendiente por hacer Test para el require Allowance
         _token = IERC20 (tokens[deals[_dealID].coin]);
-        require(_token.allowance(msg.sender, address(this)) >= deals[_dealID].amount, "First increaseAllowance in the ERC20 contract");
-        require(deals[_dealID].buyer == msg.sender, "Your are not the buyer");
+        require(_token.allowance(msg.sender, address(this)) >= deals[_dealID].amount, "First increaseAllowance to ERC20 contract");
+        require(deals[_dealID].buyer == msg.sender, "only buyer");
 
 
         (bool _success) =_token.transferFrom(msg.sender, address(this), deals[_dealID].amount);
-        if(!_success) revert("Problem paying FEE");
+        if(!_success) revert();
         
         deals[_dealID].goods += deals[_dealID].amount;
     }
@@ -226,15 +244,15 @@ contract data_var{
         _token = IERC20 (tokens[deals[_dealID].coin]);
         uint256 _fee = feeCalculation(deals[_dealID].amount);
 
-        require(_fee > 0, "Fee is lower than 0");
-        require(deals[_dealID].goods > 0, "No tokens left");
-        require(deals[_dealID].goods == deals[_dealID].amount, "Goods and deal Amount have diff value");
+        require(_fee > 0, "Fee > 0");
+        require(deals[_dealID].goods > 0, "No tokens ");
+        require(deals[_dealID].goods == deals[_dealID].amount, "Goods and Amount diff value");
 
         //closing the Deal as completed
         deals[_dealID].status = 2;
 
         (bool flagAmountFee, uint256 _newAmount)= SafeMath.trySub(deals[_dealID].amount, _fee);
-        if(!flagAmountFee) revert("flagAmountFee overflow");
+        if(!flagAmountFee) revert();
 
         deals[_dealID].goods = 0;
         acceptance[_dealID].buyerChoose = 3;
@@ -242,10 +260,10 @@ contract data_var{
 
         // send the Fee to owner
         (bool _success)=_token.transfer(owner, _fee);
-        if(!_success) revert("Problem paying FEE");
+        if(!_success) revert();
         // send to Seller tokens
         (bool _successSeller) = _token.transfer(deals[_dealID].seller, _newAmount);
-        if(!_successSeller) revert("Problem paying SELLER");
+        if(!_successSeller) revert();
 
         return(true);
     }
@@ -255,8 +273,8 @@ contract data_var{
         // TODO> pendiente de testear el calculo del penalty
         _token = IERC20 (tokens[deals[_dealID].coin]);
         
-        require(deals[_dealID].goods > 0, "No tokens left");
-        require(deals[_dealID].goods == deals[_dealID].amount, "Goods and deal Amount have diff value");
+        require(deals[_dealID].goods > 0, "No tokens ");
+        require(deals[_dealID].goods == deals[_dealID].amount, "Goods and Amount diff value");
 
         deals[_dealID].status = 3; //cancel
         uint256 _refundAmount = deals[_dealID].goods;
@@ -266,15 +284,15 @@ contract data_var{
         
         uint256 _newPenalty = (defaultPenalty * 10 ** tokenDecimal[deals[_dealID].coin]);
         (bool flagPenalty, uint256 _newamount)= SafeMath.trySub(_refundAmount, _newPenalty);
-        if(!flagPenalty) revert("flagPenalty overflow");
+        if(!flagPenalty) revert();
 
         uint256 _penaltyFee = _refundAmount -= _newamount;
         // send the Fee to owner
         (bool _success)=_token.transfer(owner, _penaltyFee);
-        if(!_success) revert("Problem paying PENALTY");
+        if(!_success) revert();
        
         (bool _successBuyer)= _token.transfer(deals[_dealID].buyer, _newamount);
-        if(!_successBuyer) revert("Problem with REFUND TOKENS");
+        if(!_successBuyer) revert();
 
         return(true);
     }
@@ -282,16 +300,16 @@ contract data_var{
     function feeCalculation(uint256 _amount)internal view returns (uint256){
 
         (bool flagMultiply,uint256 mult) = SafeMath.tryMul(_amount, defaultFee);
-        if(!flagMultiply) revert("flagMultiplye overflow");
+        if(!flagMultiply) revert();
         
         (bool flagDiv, uint256 _fee) = SafeMath.tryDiv(mult,10000);
-        if(!flagDiv) revert("flagDiv overflow or divided by zero");
+        if(!flagDiv) revert();
 
         (bool flagAmountFee, uint256 _diff)= SafeMath.trySub(_amount, _fee);
-        if(!flagAmountFee) revert("flagAmountFee overflow");
+        if(!flagAmountFee) revert();
 
         (bool flagFee, uint256 _newAmount)= SafeMath.trySub(_amount, _diff);
-        if(!flagFee) revert("flagFee overflow");
+        if(!flagFee) revert();
         return(_newAmount);
     }
 
@@ -308,8 +326,8 @@ contract data_var{
     }
 
     function partTakerDecision(uint256 _dealID, uint8 _decision)public isPartTaker(_dealID) openDeal(_dealID){
-        require(deals[_dealID].goods == deals[_dealID].amount, "Buyer need send the tokens before to make a decision");
-        require((_decision > 0 && _decision < 3), "Only choose between of: 1 = Accepted, 2 = Cancelled");
+        require(deals[_dealID].goods == deals[_dealID].amount, "Buyer need send the tokens");
+        require((_decision > 0 && _decision < 3), "1 = Accepted, 2 = Cancelled");
         if(msg.sender == deals[_dealID].buyer){
             acceptance[_dealID].buyerChoose = _decision;
         }
@@ -321,32 +339,32 @@ contract data_var{
 
     function cancelDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) {
         //both want to cancel and finish
-        require(msg.sender == deals[_dealID].buyer,"Only Buyer can ask for refund");
-        require((acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2),"Buyer and Seller must be agree with the same decision");
+        require(msg.sender == deals[_dealID].buyer,"Only Buyer");
+        require((acceptance[_dealID].buyerChoose == 2 && acceptance[_dealID].sellerChoose == 2),"B&S must be agree");
             
         (bool _flag) = refundBuyer(_dealID);
-        if(!_flag) revert("Problem with refundBuyer");
+        if(!_flag) revert();
 
     }
 
     function completeDeal(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID) {
         //both want to proceed and finish
         require(msg.sender == deals[_dealID].seller, "Only Seller can claim tokens");
-        require((acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1),"Buyer and Seller must be agree with the same decision");
+        require((acceptance[_dealID].buyerChoose == 1 && acceptance[_dealID].sellerChoose == 1),"B&S must be agree");
 
         (bool _flag) = payDeal(_dealID);
-        if(!_flag) revert("Problem with payDeal");
+        if(!_flag) revert();
 
 
     }
 
     function buyerAskDeadline(uint256 _dealID)public isPartTaker(_dealID) openDeal(_dealID){
         // agregar validacion de cuando se pueda solicitar en el deal
-        require(msg.sender == deals[_dealID].buyer,"Only Buyer can ask for refund");
-        require(deals[_dealID].deadline < block.timestamp, "Seller still have time to complete the deal");
+        require(msg.sender == deals[_dealID].buyer,"Only Buyer");
+        require(deals[_dealID].deadline < block.timestamp, "Seller still have time");
 
         (bool _flag) = refundBuyer(_dealID);
-        if(!_flag) revert("Problem with refundBuyer");
+        if(!_flag) revert();
     }
 
 }
