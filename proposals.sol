@@ -20,7 +20,7 @@ contract proposals{
     struct proposal{
         uint256 created;
         uint8 proposalType; // 0 = informative, 1 = update deadline
-        uint8 accepted; //(0 = No answer, 1 = Accepted, 2 = Cancelled,)
+        uint8 accepted; //(0 = No answer, 1 = Accepted, 2 = Cancelled, 3 =  No changes, 4 = time updated)
         string description;
         bool proposalStatus;
     }
@@ -54,6 +54,9 @@ contract proposals{
         //deals[_dealID].numOfProposals = _historyUpdates.lastUpdateId;
         _historyUpdates.proposalsInfo[_historyUpdates.lastUpdateId] = proposal(block.timestamp, _proposalType, 0, _description, false);
 
+    }
+    function _deadlineUpdatedStatus(uint _dealId)internal{
+        updates[_dealId].proposalsInfo[updates[_dealId].lastUpdateId].accepted = 4;
     }
 
     function _seeProposals(uint _dealId, uint _proposalId) internal  view returns(uint256, uint8, uint8, string memory, bool){
