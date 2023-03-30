@@ -8,7 +8,15 @@ const privateKey= process.env.DEPLOYER_SIGNER_PRIVATE_KEY;
 const alchemy = process.env.ALCHEMY_PROJ_ID;
 
 module.exports = {
-  solidity: "0.8.9",
+  solidity: {
+    version: "0.8.9",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 20000
+      }
+    }
+  },
 /*se pueden trabajar con varias redes a la vez */
   //defaultNetwork: "rinkeby",
   networks:{

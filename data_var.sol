@@ -15,8 +15,8 @@ contract data_var is proposals, utils {
     uint256 public defaultFee;
     uint256 public defaultPenalty;
     address payable owner;
-    address payable oracle;
-    address payable tribunal;
+    address public oracle;
+    address public tribunal;
 
     using SafeERC20 for IERC20;
     using Counters for Counters.Counter;
@@ -65,6 +65,9 @@ contract data_var is proposals, utils {
     event _dealEvent(uint256 ID, string TOKEN, bool STATUSCREATE);
 
     constructor(address _tokenAddress, string memory _tokenName,  uint256 _tokenDecimal,uint256 _defaultPenalty){
+        // TODO> Agregar funciones para la proteccion de tiempos del BUYER
+        // TODO> Agregar funcion para modificar defaultLifeTime
+        // TODO> Agregar funcion para modificar limitLifeTime para limite proteccion de tiempos del BUYER
         // TODO> solucionar defaultpenalty para ir acorder a los decimales del token
 
         owner = payable(msg.sender);
@@ -100,21 +103,17 @@ contract data_var is proposals, utils {
     }
 
     modifier tokenValid(string memory _tokenName){
-        require(tokens[_tokenName] != address(0),"token not supportedt");
+        require(tokens[_tokenName] != address(0),"token not supported");
         _;
     }
 
-    modifier aboveOfZero(uint256 _amount){
-        require(_amount > 0, " only above of 0 wei");
-        _;
-    }
 
     // Change Defaults parms
     function _changeDefaultFee(uint256 _newDefaultFee) public{
         // use Points Basis 1% = 100
         require(msg.sender == owner, "Only Owner");
-        require((_newDefaultFee >= 10),"Fee is in Points Basis MIN 0.1% = 10" );
-        require((_newDefaultFee <= 1000),"Fee is in Points Basis MAX 10% = 1000");
+        require((_newDefaultFee >= 10),"Fee in PB MIN 0.1% = 10" );
+        require((_newDefaultFee <= 1000),"Fee in PB MAX 10% = 1000");
         defaultFee = _newDefaultFee;
     }
 
@@ -127,6 +126,14 @@ contract data_var is proposals, utils {
         require(msg.sender == owner, "Only Owner can change it");
         defaultLifeTime = _newDefaultLifeTime;
     }
+    function _changeTribunalAdress(address _newAddress) public{
+        require(msg.sender == owner, "Only Owner");
+        tribunal = _newAddress;
+    }
+    function _changeOracleAddress(address _newAddress) public{
+        require(msg.sender == owner, "Only Owner");
+        oracle = _newAddress;
+    }
 
     function _addNewToken(string memory _tokenName, address _tokenAddress, uint256 _tokenDecimal)public {
         require(msg.sender == owner, "Only Owner can add a token it");
@@ -137,9 +144,11 @@ contract data_var is proposals, utils {
     }
 
 
+// TODO> HACER TEST PARA IMPORTAR LAS FUNCIONES PARA LAS PROPUESTAS
 // TODO> HACER FUNCIONES PARA EL ORACULO
 // TODO> HACER FUNCIONES PARA EL TRIBUNAL
     function _updateDeadline(uint256 _dealID, uint256 _addDays)public openDeal(_dealID) isPartTaker(_dealID) returns(bool){
+        // TODO> Agregar nueva variable para actualizacion de decisiones
         (,uint8 _proposalType, uint8 _accepted, , bool _status) = _seeProposals(_dealID,deals[_dealID].numOfProposals);
 
         require(deals[_dealID].buyer == msg.sender, "Only BUYER");
@@ -173,6 +182,7 @@ contract data_var is proposals, utils {
         return(created, proposalType, accepted, _description, proposalStatus);
     }
 
+//add require para evitar duplicidad de ID en el mapping, que sea diferente a  0x0
     function createDeal(
         address _buyer, 
         address _seller, 
@@ -182,8 +192,9 @@ contract data_var is proposals, utils {
         string memory _coin, 
         uint256 _deadlineInDays
 
-        )public tokenValid(_coin) aboveOfZero(_amount) returns(bool){
+        )public tokenValid(_coin)  returns(bool){
         
+        require(_amount > 0, "above 0 wei");
         require(_deadlineInDays >= 0 && _deadlineInDays <= 30,"Deadline in days. 0 to 30");
 
         uint256 _newDeadline = deadlineCal(_deadlineInDays);
@@ -342,4 +353,11 @@ contract data_var is proposals, utils {
         if(!_flag) revert();
     }
 
+    // Oracle
+    // => Oracle forze Refund
+    //      - Cuando deadline ha sido alcanzado y seller tiene status 0 (sin contestar)
+    //      - Cuando deadline ha sido alcanzado, buyer y seller tienen status 0 (sin contestar)
+    // => Oracle forze pay
+    //      - Cuando deadline ha sido alcanzado y buyer tiene status agreement=0 (sin contestar) y seller status agreement=1
+    //      - Cuando deadline ha sido alcanzado, buyer y seller tienen status agreement=1
 }
